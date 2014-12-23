@@ -50,43 +50,52 @@ Linux) and then just enter command below.
 To see allowed options, enter the command:
     
     $ ./codeSize.R --help
-    Usage: ./codeSize.R [--file|f] <file>]
-                        [--symSize|s <octets>]
-                        [--secSize|S] <minSecoctetstSize>]
-                        [--maxSymb|m <octets>]
-                        [--dirSize|D] <octets>]
-                        [--fileSize|F <octets>]
-                        [--maxLines|m <lines>]
-                        [--verbose|v] [--help|?]
+        Usage: ./codeSize.R [--file|f] <file>]
+                            [--symSize|s <octets>]
+                            [--secSize|S] <minSecoctetstSize>]
+                            [--maxSymb|m <octets>]
+                            [--dirSize|D] <octets>]
+                            [--fileSize|F <octets>]
+                            [--maxLines|m <lines>]
+                            [--verbose|v]
+                            [--help|?]
     where:
         -f|--file       The input file path, default is nm.txt in the current working directory
         -s|--symSize    Discard symbols smaller than this. Default is 1 octet
         -S|--secSize    Discard sections smaller than this. Default is 256 octets
-        -m|--maxSymb    Only report symbols this size and larger in max symbol report. Deault is 4096 octets
-        -D|--dirSize    Size that the sum of all symbols in a directory (and subdirectories) must be to make it into the directory report. Default is 128K.
-        -F|--fileSize   Size that the sum of all symbols in a file must be to make it into the file report.  Default is 64K.
-        -m|--maxLines   Maximum number of output lines per report/sub-report for sections that may have many.  Default is 100.
+        -m|--maxSymb    Only report symbols this size and larger in max symbol report.
+                        Default is 4096 octets
+        -D|--dirSize    Size that the sum of all symbols in a directory (and subdirectories) 
+                        must be to make it into the directory report. Default is 128K.
+        -F|--fileSize   Size that the sum of all symbols in a file must be to make it into 
+                        the file report.  Default is 64K.
+        -m|--maxLines   Maximum number of output lines per report/sub-report for sections that 
+                        may have many.  Default is 100.
         -v|--verbose    Enable verbose output
         -?|--help       Print out help text
 
 The output will is sent to *stdout*
 
-The parameters to the *code_size* function are:
+Running from with Rstudio or from the R console prompt
+------------------------------------------------------
+
+If you run the script from within Rstudio or the R shell, you can just call the *code_size*
+function and supply any needed parameters.  The parameters to the *code_size* function are:
 
 Parameter       | Description
 --------------- | ---------------------------------
-inputFile       | Input NM filename created with GHS *'gnm'* and the *'-h -v -p -S -a -X'* options.  Default is **'ram.nm.txt'**
-inputDir        | Input base directory.  Default is the current working directory
+inputFile       | Path to input NM created with GHS *'gnm'* and the *'-h -v -p -S -a -X'* options.  Default is **'nm.txt'**
 minSymSize      | Minimum symbol size (in octets). All symbols smaller than this will be discarded. Default is **1 octet** (*zero* length symbols discarded)
-minSectSize     | Minimum section size (in octets). All sections smaller than this will be discarded. Default is **256 octets**
-maxSymbolCutoff | Size a symbol must be to make it into the maximum symbol report. Default is **4096 octets**
-maxDirectoryCuttoff | Size that the sum of all symbols in a directory (and subdirectories) must be to make it into the directory report. Default is 128K.
-maxFileCuttoff  | Size that the sum of all symbols in a file must be to make it into the file report.  Default is 64K.
+minSectSize     | Minimum section size (in octets). All sections smaller than this will be discarded. Default is **256**
+maxSymbolCutoff | Size a symbol must be to make it into the maximum symbol report. Default is **4096**
+maxDirectoryCutoff | Size that the sum of all symbols in a directory (and subdirectories) must be to make it into the directory report. Default is **128K**.
+maxFileCutoff   | Size that the sum of all symbols in a file must be to make it into the file report.  Default is **64K**.
+maxLines        | Maximum number of output lines per report/sub-report for sections that may have many.  Default is **100** lines..
 verbose         | Verbose output flag for debugging purposes
 
 Sample Output
 -------------
 
-Below is some sample (and condensed) output from the program.
+Below is a sample (and condensed) output from the program.
 
     **TODO**

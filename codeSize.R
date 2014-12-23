@@ -15,6 +15,20 @@
 local
 discardSections <- c("(UNDEF)", "syscall")
 
+demangleCppNames  <- function(inputData, verbose)
+{
+    # Demangle C++ names as much as possible
+
+    # No parameters in function
+    inputData$symbol <- gsub("__Fv$", "()", inputData$symbol)
+
+    # C++ destructor and constructor(no parameters)
+    inputData$symbol <- sub("^__dt__([0-9]+)(.*)Fv$", "~\\2::\\2(void)", inputData$symbol)
+    inputData$symbol <- sub("^__ct__([0-9]+)(.*)Fv$", "~\\2::\\2(void)", inputData$symbol)
+
+    return(inputData)
+}
+
 cleanupSymbolNames <- function(inputData, verbose)
 {
     ## Do some name mangling and path cleanup to make the symbol names more reasonable
@@ -23,7 +37,7 @@ cleanupSymbolNames <- function(inputData, verbose)
 
     if (verbose) { print("Cleaning up filenames")}
 
-    inputData$symbol <- gsub(".2F", "/", inputData$symbol)
+    inputData$symbol <- gsub(".2F", "/", inputData$symbol, fixed=TRUE)
 
     # Now look for ../ in the symbol name and use it to split into a symbol and file name.
     # Not all symbols (library/stl/...) may have a file name. Best way is to replace the first
@@ -32,7 +46,9 @@ cleanupSymbolNames <- function(inputData, verbose)
 
     if (verbose) { print("Creating separate symbol and filename columns")}
 
-    inputData$symbol <- sub("../", " ", inputData$symbol, fixed=TRUE)
+    inputData$symbol <- sub(".../", " /", inputData$symbol, fixed=TRUE)
+    inputData$symbol <- sub("../", " /", inputData$symbol, fixed=TRUE)
+    inputData$symbol <- sub("./", " /", inputData$symbol, fixed=TRUE)
 
     getSymbol   <- function(x) { str_split(x, " ", n=2)[[1]][1] }
     getFilename <- function(x) { str_split(x, " ", n=2)[[1]][2] }
@@ -40,7 +56,7 @@ cleanupSymbolNames <- function(inputData, verbose)
     inputData[, file:=getFilename(symbol), by=symbol]
     inputData[, symbol:=getSymbol(symbol), by=symbol]
 
-    return(inputData)
+    demangleCppNames(inputData)
 }
 
 cleanupColumns <- function(inputData, verbose)
@@ -192,7 +208,8 @@ discardSmallSections <- function(tableList, minSize, verbose)
     if (verbose) { print(sprintf("Dropping section tables smaller than %d octets", minSize)) }
 
     finalList <- list()
-    idx = 1
+    idx      = 1
+    finalIdx = 1
 
     for (table in tableList)
     {
@@ -201,9 +218,9 @@ discardSmallSections <- function(tableList, minSize, verbose)
 
         if (sectSize >= minSize)
         {
-            finalList[[idx]]      <- table
-            names(finalList)[idx] <- tableName
-            idx                   <- idx + 1
+            finalList[[finalIdx]]      <- table
+            names(finalList)[finalIdx] <- tableName
+            finalIdx = finalIdx + 1
 
             if (verbose) { print(sprintf("  Section %s is %d octets", tableName, sectSize)) }
         }
@@ -211,46 +228,121 @@ discardSmallSections <- function(tableList, minSize, verbose)
         {
             print(sprintf("  Dropped section %s. Only %d octets", tableName, sectSize))
         }
+        idx <- idx + 1
     }
     return(finalList)
 }
 
-
 outputSectionReport <- function(tableList)
 {
-    print ("------------------------------------------------")
-    print ("Symbol Table Results")
-    print ("")
-    print ("   TODO:   Not yet implemented")
-    print ("")
+    print("------------------------------------------------")
+    print("Symbol Table Results")
+    print("--------------------\n")
+    print("          Table :     Size");
+
+    idx <- 1
+
+    for (table in tableList)
+    {
+        tableName <- names(tableList)[idx]
+        sum       <- sum(table$size)
+
+        print(sprintf(" %14s : %9d", tableName, sum))
+        idx <- idx + 1
+    }
+    invisible()
 }
 
-# Output largest symbols
+# Output largest symbols (per table)
 
-outputLargestSymbols <- function(tableList, cutoff)
+outputLargestSymbols <- function(tableList, cutoff, maxLines)
+{
+    print("------------------------------------------------")
+    print(sprintf("Largest Symbol per section by descending size. Report minimum = %d octets", cutoff))
+    print("--------------------------------------------------------------------------------------\n")
+
+    idx <- 1
+
+    for (table in tableList)
+    {
+        subTable <- table[!is.na(table$size) & table$size >= cutoff, ]
+
+        if (nrow(subTable) > 0)
+        {
+            # And sort it
+
+            subTable <- setorder(subTable, -size)
+
+            # Output Results
+            max <- nrow(table)
+            if (maxLines < max)
+            {
+                max <- maxLines
+            }
+            print(sprintf("  Section: %s.  %d rows of %d", names(tableList)[idx], max,
+                         nrow(table)))
+            print("         Size : Symbol                                            File");
+
+            for (row in 1:max)
+            {
+                print(sprintf("    %9d : %40s : %s", subTable$size[row],
+                              subTable$symbol[row], subTable$file[row]))
+            }
+            print("    \n-------------------------------------------")
+        }
+        idx <- idx + 1
+    }
+    invisible()
+}
+
+# Output symbols sizes by directory
+
+outputDirectorySizes <- function(tableList, cutoff, maxLines)
 {
     print ("------------------------------------------------")
-    print (sprintf("Largest Symbol per section.  Report minimum = %d octets", cutoff))
+    print (sprintf("Largest directories  Report minimum = %d octets", cutoff))
     print ("")
     print ("   TODO:   Not yet implemented")
     print ("")
+
+
+    invisible()
 }
-checkPkgs <- function()
+
+# Output symbols sizes by directory/file
+
+outputFileSizes <- function(tableList, cutoff, maxLines)
+{
+    print ("------------------------------------------------")
+    print (sprintf("Largest files.  Report minimum = %d octets", cutoff))
+    print ("")
+    print ("   TODO:   Not yet implemented")
+    print ("")
+
+
+    invisible()
+}
+
+checkPkgs <- function(pkgs, repo)
 {
     pkg.inst <- installed.packages()
-    pkgs     <- c("data.table", "stringr", "plyr", "getopt")
     have.pkg <- pkgs %in% rownames(pkg.inst)
 
     if (any(!have.pkg))
     {
         message("\nSome packages need to be installed.\n")
-        r <- readline("Install necessary packages [y/n]? ")
-        if(tolower(r) == "y")
+        #r <- readline("Install necessary packages [y/n]? ")
+        cat("  Install necessary packages [y/n]? ")
+        answer <- readLines(con="stdin", 1)
+        cat(answer, "\n")
+        if(tolower(answer) == "y")
         {
             need <- pkgs[!have.pkg]
-            message("\nInstalling packages ",
-                    paste(need, collapse = ", "))
-            install.packages(need)
+            message("\nInstalling packages ", paste(need, collapse = ", "))
+
+            # Use 0-clouds RStudion since it provides redirection to other servers worldwide
+
+            install.packages(need, repos=repo)
         }
     }
 }
@@ -258,7 +350,10 @@ checkPkgs <- function()
 code_size <- function(inputFile="./nm.txt",
                       minSymSize=1,
                       minSectSize=256,
-                      maxSymbolCuttoff=4096,
+                      maxSymbolCutoff=4096,
+                      maxDirCutoff=128 * 1024,
+                      maxFileCutoff=64 * 1024,
+                      maxLines=100,
                       verbose=FALSE)
 {
     ## Compute the size requirements from each file
@@ -272,10 +367,15 @@ code_size <- function(inputFile="./nm.txt",
     ## minSectSize - Minimum section size (in octets). All sections smaller than this will be
     ##               discarded. Default is 256 octets
     ##
-    ## maxSymbolCuttoff - Size a symbol must be to make it into the maximum symbol report.
-    ##                    default is 4096
-    ## verbose     - Verbose output flag for debugging purposes
-
+    ## maxSymbolCutoff - Size a symbol must be to make it into the maximum symbol report.
+    ##                   Default is 4096
+    ##
+    ## maxDirCutoff  - Size that the sum of all symbols in a directory (and
+    ##                  subdirectories) must be to make it into the directory report.
+    ##                  Default is 128K.
+    ##
+    ## maxFileCutoff - Size that the sum of all symbols in a file must be to make it into the
+    ##                 file report.  Default is 64K.
     # Read our input data
 
     inputData <- readInputFile(inputFile, verbose)
@@ -302,15 +402,26 @@ code_size <- function(inputFile="./nm.txt",
 
     # Output largest symbols
 
-    outputLargestSymbols(tableList, maxSymbolCuttoff)
+    outputLargestSymbols(tableList, maxSymbolCutoff, maxLines)
+
+    # Output largest directories
+
+    outputDirectorySizes(tableList, maxDirCutoff, maxLines)
+
+    # Output largest directories
+
+    outputFileSizes(tableList, maxFileCutoff, maxLines)
 
     print ("------------------------------------------------")
     print ("Done...")
 }
 
+####################################################################################
+#
 # Make sure we have all required packages
-
-checkPkgs()
+#
+checkPkgs(c("Rcpp", "plyr", "stringr", "data.table", "getopt"),
+          repo="http://cran.stat.ucla.edu/")
 suppressPackageStartupMessages(library(data.table))
 
 library(data.table)
@@ -327,13 +438,16 @@ if (length(cmdArgs) > 0)
     # Parse input with getopt() library
 
     spec = matrix(c(
-        'file',    'f', '2', 'character', 'The input file name, default is nm.txt',
-        'dir',     'd', '2', 'character', 'The input base directory, default is current working directory',
-        'symSize', 's', '2', 'integer',   'Discard symbols smaller than this. Default is 1 octet',
-        'secSize', 'S', '2', 'integer',   'Discard sections smaller than this. Default is 256 octets',
-        'maxSymb', 'm', '2', 'integer',   'Only report symbols this size and larger in max symbol report. Deault is 4096 octets',
-        'verbose', 'v', '0', 'logical',   'Enable verbose output',
-        'help',    '?', '0', 'logical',   'Print out help text'
+        'file',     'f', '2', 'character', 'The input file name, default is nm.txt',
+        'dir',      'd', '2', 'character', 'The input base directory, default is current working directory',
+        'symSize',  's', '2', 'integer',   'Discard symbols smaller than this. Default is 1 octet',
+        'secSize',  'S', '2', 'integer',   'Discard sections smaller than this. Default is 256 octets',
+        'maxSymb',  'm', '2', 'integer',   'Only report symbols this size and larger in max symbol report. Deault is 4096 octets',
+        'dirSize',  'D', '2', 'integer',   'Size that the sum of all symbols in a directory (and subdirectories) must be to make it into the directory report. Default is 128K.',
+        'fileSize', 'F', '2', 'integer',   'Size that the sum of all symbols in a file must be to make it into the file report.  Default is 64K.',
+        'maxLines', 'm', '2', 'integer',   'Maximum number of output lines per report/sub-report for sections that may have many.  Default is 100.',
+        'verbose',  'v', '0', 'logical',   'Enable verbose output',
+        'help',     '?', '0', 'logical',   'Print out help text'
         ), byrow=TRUE, ncol=5)
 
     opt = getopt(spec);
@@ -347,16 +461,22 @@ if (length(cmdArgs) > 0)
     # Update defaults here and also in the 'code_size' function if you want consistent behaviour
     # from within RStudio (debugging) and from the command line
 
-    if (is.null(opt$file))    { opt$file    = "./nm.txt" }
-    if (is.null(opt$symSize)) { opt$symSize = 1     }
-    if (is.null(opt$secSize)) { opt$secSize = 256   }
-    if (is.null(opt$maxSymb)) { opt$maxSymb = 4096  }
-    if (is.null(opt$verbose)) { opt$verbose = FALSE }
+    if (is.null(opt$file))     { opt$file     = "./nm.txt" }
+    if (is.null(opt$symSize))  { opt$symSize  = 1     }
+    if (is.null(opt$secSize))  { opt$secSize  = 256   }
+    if (is.null(opt$maxSymb))  { opt$maxSymb  = 4096  }
+    if (is.null(opt$dirSize))  { opt$dirSize  = 128 * 1024  }
+    if (is.null(opt$fileSize)) { opt$fileSize = 64 * 1024  }
+    if (is.null(opt$maxLines)) { opt$maxLines = 100   }
+    if (is.null(opt$verbose))  { opt$verbose  = FALSE }
 
     code_size(inputFile=opt$file,
               minSymSize=opt$symSize,
               minSectSize=opt$secSize,
-              maxSymbolCutoffopt$maxSymb,
+              maxSymbolCutoff=opt$maxSymb,
+              maxDirCutoff=opt$dirSize,
+              maxFileCutoff=opt$fileSize,
+              maxLines=opt$maxLines,
               verboseopt$verbose)
 }
 if (length(cmdArgs) == 0)
