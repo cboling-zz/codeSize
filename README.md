@@ -56,7 +56,7 @@ To see allowed options, enter the command:
                             [--maxSymb|m <octets>]
                             [--dirSize|D] <octets>]
                             [--fileSize|F <octets>]
-                            [--maxLines|m <lines>]
+                            [--maxLines|M <lines>]
                             [--verbose|v]
                             [--help|?]
     where:

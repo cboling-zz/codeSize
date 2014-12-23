@@ -259,13 +259,15 @@ outputLargestSymbols <- function(tableList, cutoff, maxLines)
 {
     print("------------------------------------------------")
     print(sprintf("Largest Symbol per section by descending size. Report minimum = %d octets", cutoff))
-    print("--------------------------------------------------------------------------------------\n")
+    print("--------------------------------------------------------------------------------------")
+    print("")
 
     idx <- 1
 
     for (table in tableList)
     {
-        subTable <- table[!is.na(table$size) & table$size >= cutoff, ]
+        na.omit(table, cols="size")
+        subTable <- table[table$size >= cutoff, ]
 
         if (nrow(subTable) > 0)
         {
@@ -274,21 +276,23 @@ outputLargestSymbols <- function(tableList, cutoff, maxLines)
             subTable <- setorder(subTable, -size)
 
             # Output Results
-            max <- nrow(table)
+            max <- nrow(subTable)
             if (maxLines < max)
             {
                 max <- maxLines
             }
             print(sprintf("  Section: %s.  %d rows of %d", names(tableList)[idx], max,
                          nrow(table)))
-            print("         Size : Symbol                                            File");
+            print("         Size :                                   Symbol  : File");
 
             for (row in 1:max)
             {
-                print(sprintf("    %9d : %40s : %s", subTable$size[row],
+                print(sprintf("    %9d : %40s : %s", as.integer(subTable$size[row]),
                               subTable$symbol[row], subTable$file[row]))
             }
-            print("    \n-------------------------------------------")
+            print("")
+            print("    -------------------------------------------")
+            print("")
         }
         idx <- idx + 1
     }
@@ -445,7 +449,7 @@ if (length(cmdArgs) > 0)
         'maxSymb',  'm', '2', 'integer',   'Only report symbols this size and larger in max symbol report. Deault is 4096 octets',
         'dirSize',  'D', '2', 'integer',   'Size that the sum of all symbols in a directory (and subdirectories) must be to make it into the directory report. Default is 128K.',
         'fileSize', 'F', '2', 'integer',   'Size that the sum of all symbols in a file must be to make it into the file report.  Default is 64K.',
-        'maxLines', 'm', '2', 'integer',   'Maximum number of output lines per report/sub-report for sections that may have many.  Default is 100.',
+        'maxLines', 'M', '2', 'integer',   'Maximum number of output lines per report/sub-report for sections that may have many.  Default is 100.',
         'verbose',  'v', '0', 'logical',   'Enable verbose output',
         'help',     '?', '0', 'logical',   'Print out help text'
         ), byrow=TRUE, ncol=5)
@@ -477,7 +481,7 @@ if (length(cmdArgs) > 0)
               maxDirCutoff=opt$dirSize,
               maxFileCutoff=opt$fileSize,
               maxLines=opt$maxLines,
-              verboseopt$verbose)
+              verbose=opt$verbose)
 }
 if (length(cmdArgs) == 0)
 {
