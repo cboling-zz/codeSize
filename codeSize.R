@@ -255,8 +255,7 @@ checkPkgs <- function()
     }
 }
 
-code_size <- function(inputFile="nm.txt",
-                      inputDir=getwd(),
+code_size <- function(inputFile="./nm.txt",
                       minSymSize=1,
                       minSectSize=256,
                       maxSymbolCuttoff=4096,
@@ -264,10 +263,8 @@ code_size <- function(inputFile="nm.txt",
 {
     ## Compute the size requirements from each file
     ##
-    ## inputFile   - Input NM filename created with GHS 'gnm' and the '-h -v -p -S -a -X'
-    ##               options.  Default is 'ram.nm.txt'
-    ##
-    ## inputDir    - Input base directory.  Default is the current working directory.
+    ## inputFile   - Input NM file path created with GHS 'gnm' and the '-h -v -p -S -a -X'
+    ##               options.  Default is './nm.txt'
     ##
     ## minSymSize  - Minimum symbol size (in octets). All symbols smaller than this will be
     ##               discarded. Default is 1 octet (zero length symbols discarded)
@@ -281,7 +278,7 @@ code_size <- function(inputFile="nm.txt",
 
     # Read our input data
 
-    inputData <- readInputFile(file.path(inputDir, inputFile), verbose)
+    inputData <- readInputFile(inputFile, verbose)
 
     # Create separate tables based on section
 
@@ -350,22 +347,13 @@ if (length(cmdArgs) > 0)
     # Update defaults here and also in the 'code_size' function if you want consistent behaviour
     # from within RStudio (debugging) and from the command line
 
-    inputFileVal       <-
-    inputDirVal        <-
-    minSymSizeVal      <- 1
-    minSectSizeVal     <- 256
-    maxSymbolCutoffVal <- 4096
-    verboseVal         <- FALSE
-
-    if (is.null(opt$file))    { opt$file    = "nm.txt" }
-    if (is.null(opt$dir))     { opt$dir     = getwd() }
+    if (is.null(opt$file))    { opt$file    = "./nm.txt" }
     if (is.null(opt$symSize)) { opt$symSize = 1     }
     if (is.null(opt$secSize)) { opt$secSize = 256   }
     if (is.null(opt$maxSymb)) { opt$maxSymb = 4096  }
     if (is.null(opt$verbose)) { opt$verbose = FALSE }
 
     code_size(inputFile=opt$file,
-              inputDir=opt$dir,
               minSymSize=opt$symSize,
               minSectSize=opt$secSize,
               maxSymbolCutoffopt$maxSymb,
