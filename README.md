@@ -71,6 +71,7 @@ To see allowed options, enter the command:
                         the file report.  Default is 64K.
         -m|--maxLines   Maximum number of output lines per report/sub-report for sections that 
                         may have many.  Default is 100.
+        -o|--output     Output CSV filename for cleaned map.  Default is "" (no CSV output)
         -v|--verbose    Enable verbose output
         -?|--help       Print out help text
 
@@ -91,6 +92,7 @@ maxSymbolCutoff | Size a symbol must be to make it into the maximum symbol repor
 maxDirectoryCutoff | Size that the sum of all symbols in a directory (and subdirectories) must be to make it into the directory report. Default is **128K**.
 maxFileCutoff   | Size that the sum of all symbols in a file must be to make it into the file report.  Default is **64K**.
 maxLines        | Maximum number of output lines per report/sub-report for sections that may have many.  Default is **100** lines..
+csvOutput       | Output filename for CSV output for entire data.  By default no CSV output is generated.
 verbose         | Verbose output flag for debugging purposes
 
 Sample Output

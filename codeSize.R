@@ -32,12 +32,14 @@ demangleCppNames  <- function(inputData, verbose)
 cleanupSymbolNames <- function(inputData, verbose)
 {
     ## Do some name mangling and path cleanup to make the symbol names more reasonable
-    #
-    # Convert the .2F to a slash '/'
 
     if (verbose) { print("Cleaning up filenames")}
 
+    # Convert the .2F to a slash '/'.  This covers most source files.  Then delete any
+    # ..[num] at end of line.
+
     inputData$symbol <- gsub(".2F", "/", inputData$symbol, fixed=TRUE)
+    inputData$symbol <- sub("..([0-9]+)$", "", inputData$symbol)
 
     # Now look for ../ in the symbol name and use it to split into a symbol and file name.
     # Not all symbols (library/stl/...) may have a file name. Best way is to replace the first
@@ -49,6 +51,7 @@ cleanupSymbolNames <- function(inputData, verbose)
     inputData$symbol <- sub(".../", " /", inputData$symbol, fixed=TRUE)
     inputData$symbol <- sub("../", " /", inputData$symbol, fixed=TRUE)
     inputData$symbol <- sub("./", " /", inputData$symbol, fixed=TRUE)
+    inputData$symbol <- sub("..", " /", inputData$symbol, fixed=TRUE)
 
     getSymbol   <- function(x) { str_split(x, " ", n=2)[[1]][1] }
     getFilename <- function(x) { str_split(x, " ", n=2)[[1]][2] }
@@ -327,6 +330,24 @@ outputFileSizes <- function(tableList, cutoff, maxLines)
     invisible()
 }
 
+
+outputCsvFile <- function(tableList, csvOutput)
+{
+    # Recreate the one big list.  But first add back in section name
+
+    idx = 1
+
+    for (table in tableList)
+    {
+        table$section <- as.factor(names(tableList)[idx])
+    }
+    allSections <- rbindlist(tableList)
+
+    write.table(allSections, file=csvOutput, sep = ",", row.names=FALSE)
+
+    invisible()
+}
+
 checkPkgs <- function(pkgs, repo)
 {
     pkg.inst <- installed.packages()
@@ -358,6 +379,7 @@ code_size <- function(inputFile="./nm.txt",
                       maxDirCutoff=128 * 1024,
                       maxFileCutoff=64 * 1024,
                       maxLines=100,
+                      csvOutput="",
                       verbose=FALSE)
 {
     ## Compute the size requirements from each file
@@ -380,6 +402,9 @@ code_size <- function(inputFile="./nm.txt",
     ##
     ## maxFileCutoff - Size that the sum of all symbols in a file must be to make it into the
     ##                 file report.  Default is 64K.
+    ##
+    ## csvOutput     - Output filename for CSV output for entire data.  By default no CSV
+    ##                 output is generated.
     # Read our input data
 
     inputData <- readInputFile(inputFile, verbose)
@@ -416,6 +441,12 @@ code_size <- function(inputFile="./nm.txt",
 
     outputFileSizes(tableList, maxFileCutoff, maxLines)
 
+    # CSV output if requested
+
+    if (length(csvOutput) > 0)
+    {
+        outputCsvFile(tableList, csvOutput)
+    }
     print ("------------------------------------------------")
     print ("Done...")
 }
@@ -450,6 +481,7 @@ if (length(cmdArgs) > 0)
         'dirSize',  'D', '2', 'integer',   'Size that the sum of all symbols in a directory (and subdirectories) must be to make it into the directory report. Default is 128K.',
         'fileSize', 'F', '2', 'integer',   'Size that the sum of all symbols in a file must be to make it into the file report.  Default is 64K.',
         'maxLines', 'M', '2', 'integer',   'Maximum number of output lines per report/sub-report for sections that may have many.  Default is 100.',
+        'output',   'o', '2', 'character', 'Output CSV filename for cleaned map.  Default is "" (no CSV output)',
         'verbose',  'v', '0', 'logical',   'Enable verbose output',
         'help',     '?', '0', 'logical',   'Print out help text'
         ), byrow=TRUE, ncol=5)
@@ -473,6 +505,7 @@ if (length(cmdArgs) > 0)
     if (is.null(opt$fileSize)) { opt$fileSize = 64 * 1024  }
     if (is.null(opt$maxLines)) { opt$maxLines = 100   }
     if (is.null(opt$verbose))  { opt$verbose  = FALSE }
+    if (is.null(opt$output))   { oupt$output  = ""    }
 
     code_size(inputFile=opt$file,
               minSymSize=opt$symSize,
@@ -481,6 +514,7 @@ if (length(cmdArgs) > 0)
               maxDirCutoff=opt$dirSize,
               maxFileCutoff=opt$fileSize,
               maxLines=opt$maxLines,
+              csvOutput=opt$output,
               verbose=opt$verbose)
 }
 if (length(cmdArgs) == 0)
