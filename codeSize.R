@@ -335,15 +335,16 @@ outputCsvFile <- function(tableList, csvOutput)
 {
     # Recreate the one big list.  But first add back in section name
 
-    idx = 1
-
-    for (table in tableList)
+    for (idx in 1:length(tableList))
     {
-        table$section <- as.factor(names(tableList)[idx])
+        tableList[[idx]]$section <- as.factor(names(tableList)[idx])
     }
     allSections <- rbindlist(tableList)
 
-    write.table(allSections, file=csvOutput, sep = ",", row.names=FALSE)
+    # Now write it. We append since the first line already exists and has our command line
+    # inserted there
+
+    write.table(allSections, file=csvOutput, sep = ",", row.names=FALSE, append=TRUE)
 
     invisible()
 }
@@ -445,6 +446,15 @@ code_size <- function(inputFile="./nm.txt",
 
     if (length(csvOutput) > 0)
     {
+        # Write the 'command line' used to create the CSV
+
+        cmdLine <- sprintf("# codeSize --file=\"%s\" --symSize=%d --secSize=%d --output=\"%s\"",
+                           inputFile, minSymSize, minSectSize, csvOutput)
+
+        fileConn<-file(csvOutput)
+        writeLines(cmdLine, fileConn)
+        close(fileConn)
+
         outputCsvFile(tableList, csvOutput)
     }
     print ("------------------------------------------------")
@@ -477,7 +487,7 @@ if (length(cmdArgs) > 0)
         'dir',      'd', '2', 'character', 'The input base directory, default is current working directory',
         'symSize',  's', '2', 'integer',   'Discard symbols smaller than this. Default is 1 octet',
         'secSize',  'S', '2', 'integer',   'Discard sections smaller than this. Default is 256 octets',
-        'maxSymb',  'm', '2', 'integer',   'Only report symbols this size and larger in max symbol report. Deault is 4096 octets',
+        'maxSymb',  'm', '2', 'integer',   'Only report symbols this size and larger in max symbol report. Default is 4096 octets',
         'dirSize',  'D', '2', 'integer',   'Size that the sum of all symbols in a directory (and subdirectories) must be to make it into the directory report. Default is 128K.',
         'fileSize', 'F', '2', 'integer',   'Size that the sum of all symbols in a file must be to make it into the file report.  Default is 64K.',
         'maxLines', 'M', '2', 'integer',   'Maximum number of output lines per report/sub-report for sections that may have many.  Default is 100.',
@@ -505,7 +515,7 @@ if (length(cmdArgs) > 0)
     if (is.null(opt$fileSize)) { opt$fileSize = 64 * 1024  }
     if (is.null(opt$maxLines)) { opt$maxLines = 100   }
     if (is.null(opt$verbose))  { opt$verbose  = FALSE }
-    if (is.null(opt$output))   { oupt$output  = ""    }
+    if (is.null(opt$output))   { opt$output   = ""    }
 
     code_size(inputFile=opt$file,
               minSymSize=opt$symSize,

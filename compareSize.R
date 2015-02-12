@@ -9,11 +9,11 @@
 ########################################
 # Customized global
 
-readInputFile <- function(inputPath, verbose)
+readInputCsvFile <- function(inputPath, verbose)
 {
     print(sprintf("Reading input file: '%s'", inputPath))
 
-    inputData <- read.table(inputPath)
+    inputData <- read.csv(inputPath)
 }
 
 outputCsvFile <- function(tableList, csvOutput)
@@ -33,7 +33,7 @@ outputCsvFile <- function(tableList, csvOutput)
     invisible()
 }
 
-checkPkgs <- function(pkgs, repo)
+checkSizeDiffPkgs <- function(pkgs, repo)
 {
     pkg.inst <- installed.packages()
     have.pkg <- pkgs %in% rownames(pkg.inst)
@@ -72,10 +72,43 @@ size_diff <- function(leftFile,
     ##                 output is generated.
     # Read our input data
 
-    leftData  <- readInputFile(leftFile, verbose)
-    rightData <- readInputFile(leftFile, verbose)
+    leftData  <- readInputCsvFile(leftFile, verbose)
+    rightData <- readInputCsvFile(leftFile, verbose)
 
-    # Create separate tables based on section
+    # We will use the right as the output and so take over the 'address' column as the left
+    # data and add in a difference column.  Also zero out the 'leftSize' to start with
+
+    colnames(rightData)[[1]] <- 'leftSize'
+    colnames(rightData)[[2]] <- 'rightSize'
+    rightData$leftSize       <- 0
+    rightData$difference     <- NA
+
+    # Reorder the columns so output/debug is a bit easier
+
+    rightData <- rightData[c('leftSize', 'rightSize', 'difference', 'symbol', 'file')]
+
+    # Walk the left data and search for equivalent match in right.
+
+    findDeltas <- function(rightRow, leftDF)
+    {
+        # Find equivalent row in the leftDF
+
+        leftRow <- leftDF[leftDF$symbol==rightRow['symbol'] & leftDF$file==rightRow['file'],]
+
+        if ((length(leftRow) == 1) && !is.na(leftRow$size))
+        {
+            # calculate new value
+
+            rightRow['leftSize']   <- leftRow$size
+            rightRow['difference'] <- leftRow$size - rightRow$rightSize
+
+            leftRow$size <- NA
+        }
+    }
+    diffArray <- apply(rightData, 1, findDeltas, leftDF=leftData)
+
+    # Now add remaining right rows in
+    # TODO
 
     print ("------------------------------------------------")
     print ("Done...")
@@ -85,8 +118,8 @@ size_diff <- function(leftFile,
 #
 # Make sure we have all required packages
 #
-checkPkgs(c("Rcpp", "plyr", "stringr", "data.table", "getopt"),
-          repo="http://cran.stat.ucla.edu/")
+checkSizeDiffPkgs(c("Rcpp", "plyr", "stringr", "data.table", "getopt"),
+                  repo="http://cran.stat.ucla.edu/")
 suppressPackageStartupMessages(library(data.table))
 
 library(data.table)
@@ -137,9 +170,5 @@ if (length(cmdArgs) == 0)
     if ("--interactive" %in% cmdArgs)
     {
         # print("Just sourcing inside RStudio")
-    }
-    else
-    {
-        size_diff()
     }
 }
